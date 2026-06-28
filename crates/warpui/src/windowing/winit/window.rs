@@ -1451,16 +1451,14 @@ fn create_window(
         .create_window(window_attributes)
         .map_err(Into::into);
 
+    // On Linux, winit only dispatches IME events after `set_ime_allowed(true)`.
+    // On X11, this triggers XIM setup; on Wayland, it only sets a flag and defers
+    // the actual `zwp_text_input_v3.enable()` to when the compositor delivers
+    // `TextInputEvent::Enter` (surface focus) — so calling it at window creation is
+    // safe on both backends.
     #[cfg(target_os = "linux")]
     if let Ok(window) = created_window.as_ref() {
-        use wgpu::rwh::RawDisplayHandle;
-        let is_x11 = matches!(
-            window_target.display_handle().map(|dh| dh.as_raw()),
-            Ok(RawDisplayHandle::Xlib(_)) | Ok(RawDisplayHandle::Xcb(_))
-        );
-        if is_x11 {
-            window.set_ime_allowed(true);
-        }
+        window.set_ime_allowed(true);
     }
 
     #[cfg(windows)]
